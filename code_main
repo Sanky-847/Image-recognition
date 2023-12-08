@@ -1,0 +1,63 @@
+import cv2
+import pytesseract
+from PIL import Image
+
+# Path to Tesseract OCR executable (update as per your installation)
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+def preprocess_image(image_path):
+    # Load the image
+    image = cv2.imread(image_path)
+
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Binarization
+    _, binary = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
+
+    # Noise reduction using median blur
+    denoised = cv2.medianBlur(binary, 5)
+
+    return denoised
+
+def detect_screen(image):
+    # Use contour detection to identify potential screens
+    contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Filter contours based on size and aspect ratio
+    potential_screens = [cnt for cnt in contours if cv2.contourArea(cnt) > 1000]
+
+    return potential_screens
+
+def segment_text_regions(image, screen_contour):
+    # Extract text regions within the detected screen
+    x, y, w, h = cv2.boundingRect(screen_contour)
+    screen_roi = image[y:y + h, x:x + w]
+
+    return screen_roi
+
+def ocr_text(image):
+    # Use Tesseract OCR to extract text from the image
+    text = pytesseract.image_to_string(image)
+
+    return text
+
+# Example usage
+image_path = 'path/to/your/image.jpg'
+
+# Preprocess the image
+preprocessed_image = preprocess_image(image_path)
+
+# Detect screens in the preprocessed image
+screens = detect_screen(preprocessed_image)
+
+# Iterate through potential screens
+for screen_contour in screens:
+    # Segment text regions within the screen
+    text_region = segment_text_regions(preprocessed_image, screen_contour)
+
+    # OCR on the text region
+    extracted_text = ocr_text(text_region)
+
+    # Print the extracted text
+    print("Extracted Text:", extracted_text)
